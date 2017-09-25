@@ -44,8 +44,13 @@ print ("Input: ",out_list)	#prints normalized input
 #----- GOOGLE TRANSLATE INPUT -----#
 
 translator = Translator()
-trans_input = translator.translate(out_list).text
-print("Translated Input: ", trans_input)	#prints translated input
+detected_lang = translator.detect(out_list).lang
+if detected_lang == 'en':
+    trans_input = out_list
+else:
+    mid_trans = translator.translate(out_list, src="hi", dest = "ur").text
+    trans_input = translator.translate(mid_trans, src = "ur", dest = "en").text
+print("Translated Input: ", trans_input)
 
 
 #----- ASSIGN TO RASA_NLU -----#

@@ -43,7 +43,6 @@ def handle_verification():
         logger.info("Wrong verification token!")
         return Response('Error, invalid token')
 
-
 @app.route('/', methods=['POST'])
 def handle_message():
     '''

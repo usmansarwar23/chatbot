@@ -92,10 +92,6 @@ def handle_message():
     cur = conn.cursor()
     global idCounter
 
-    #cur.execute("INSERT INTO responseMessagesLatest (id, facebookId, inputMessage, translatedMessage, apiResponse) VALUES (idCounter,sender_id , message_text,translated_message_text,userTest)")
-    #query =  "INSERT INTO response (id, facebookId, inputMessage, translatedMessage, apiResponse) VALUES (%s, %s, %s, %s, %s);"
-    #data = (idCounter, sender_id.encode('utf8'), message_text.encode('utf8'), translated_message_text.encode('utf8'), userTest.encode('utf8'))
-
     query =  "INSERT INTO response3 (facebookId, inputMessage, translatedMessage, apiResponse) VALUES ( %s, %s, %s, %s);"
     data = (sender_id.encode('utf8'), message_text.encode('utf8'), translated_message_text.encode('utf8'), userTest.encode('utf8'))
     cur.execute(query, data)

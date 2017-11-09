@@ -8,6 +8,8 @@ import os
 import string
 #from nltk import word_tokenize
 #from nltk.corpus import stopwords
+from stop_words import get_stop_words
+import psycopg2
 
 ''' load dataset for standardization '''
 #file1 = open("data.csv", encoding = "utf8")
@@ -16,6 +18,15 @@ import string
 # loading Dictionary
 #with open('/home/usman/chatbot/Dictionary.pickle', 'rb') as handle:
 #    dictionaryRomanUrdu = pickle.load(handle)
+global idCounter
+idCounter=0
+#conn = psycopg2.connect(database="postgres", user="postgres", password="9090", host="127.0.0.1", port="5432")
+#cur = conn.cursor()
+#cur.execute("CREATE TABLE response3(id serial PRIMARY KEY, facebookId varchar(300), inputMessage varchar(200000), translatedMessage varchar(200000), apiResponse varchar(200000));")
+#cur.execute("CREATE SEQUENCE increment start 1 increment 1;")
+logging.info("Table Created....")
+#conn.commit()
+#conn.close()
 
 try:
     import apiai
@@ -25,8 +36,7 @@ except ImportError:
     )
     import apiai
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
 
 app = Flask(__name__)
 
@@ -47,10 +57,10 @@ def handle_verification():
     Successful when verify_token is same as token sent by facebook app
     '''
     if (request.args.get('hub.verify_token', '') == VERIFY_TOKEN):
-        logger.info("\\n successfully verified")
+        logging.info("\\n successfully verified")
         return Response(request.args.get('hub.challenge', ''))
     else:
-        logger.info("Wrong verification token!")
+        logging.info("Wrong verification token!")
         return Response('Error, invalid token')
 
 @app.route('/', methods=['POST'])
@@ -59,7 +69,7 @@ def handle_message():
     Handle messages sent by facebook messenger to the applicaiton
     '''
     data = request.get_json()
-    logger.info("\\n")
+    #logging.info("\\n")
 
     if data["object"] == "page":
         for entry in data["entry"]:
@@ -72,23 +82,42 @@ def handle_message():
 
                     translated_message_text = google_translate(message_text)
                     #stop = set(stopwords.words('english'))
-                    #translated_message_text=[i for i in translated_message_text.lower().split() if i not in stop]
-                    #translated_message_text="".join([" "+i if not i.startswith("'") and i not in string.punctuation else i for i in translated_message_text]).strip()
+                    stop = get_stop_words('en')
+
+                    translated_message_text=[i for i in translated_message_text.lower().split() if i not in stop]
+                    translated_message_text="".join([" "+i if not i.startswith("'") and i not in string.punctuation else i for i in translated_message_text]).strip()
                     userTest=parse_user_message(translated_message_text)
                     send_message_response(sender_id, userTest)
-    logger.info(message_text)
-    #logger.info("\\n")
-    #logger.info(standardized_text)
-    var = message_text
-    f=open('log.txt','a+')
-    var ='\n' + '\nINPUT \n' +  var + '\n' + 'FROM GOOGLE TRANSLATE' + '\n'+ \
-          translated_message_text + '\n' + 'RESPONSE FROM API.AI' + '\n' + userTest
-    f.write(var)
-    f.close()
-    logger.info("\\n")
-    logger.info(translated_message_text)
-    logger.info("\\n")
-    logger.info(userTest)
+    conn = psycopg2.connect(database="postgres", user="postgres", password="9090", host="127.0.0.1", port="5432")
+    cur = conn.cursor()
+    global idCounter
+
+    #cur.execute("INSERT INTO responseMessagesLatest (id, facebookId, inputMessage, translatedMessage, apiResponse) VALUES (idCounter,sender_id , message_text,translated_message_text,userTest)")
+    #query =  "INSERT INTO response (id, facebookId, inputMessage, translatedMessage, apiResponse) VALUES (%s, %s, %s, %s, %s);"
+    #data = (idCounter, sender_id.encode('utf8'), message_text.encode('utf8'), translated_message_text.encode('utf8'), userTest.encode('utf8'))
+
+    query =  "INSERT INTO response3 (facebookId, inputMessage, translatedMessage, apiResponse) VALUES ( %s, %s, %s, %s);"
+    data = (sender_id.encode('utf8'), message_text.encode('utf8'), translated_message_text.encode('utf8'), userTest.encode('utf8'))
+    cur.execute(query, data)
+
+    conn.commit()
+    logging.info("Record Inserted successfully")
+    conn.close()
+
+
+    logging.info(message_text)
+    #logging.info("\\n")
+    #logging.info(standardized_text)
+    #var = message_text
+    #f=open('log.txt','a+')
+    #var ='\n' + '\nINPUT \n' +  var + '\n' + 'FROM GOOGLE TRANSLATE' + '\n'+ \
+    #      translated_message_text + '\n' + 'RESPONSE FROM API.AI' + '\n' + userTest
+    #f.write(var)
+    #f.close()
+    logging.info("\\n")
+    logging.info(translated_message_text)
+    logging.info("\\n")
+    logging.info(userTest)
 
 
 
@@ -132,6 +161,15 @@ def send_message(sender_id, message_text):
         "message": {"text": message_text}
     }))
 
+    r = requests.post("https://graph.facebook.com/v2.6/me/messages",
+        params={"access_token": PAT},
+        headers={"Content-Type": "application/json"},
+        data=json.dumps({
+        "recipient": {"id": sender_id},
+        "option": {"text": 'Options'}
+    }))
+
+
 def parse_user_message(user_text):
     '''
     Send the message to API AI which invokes an intent
@@ -167,4 +205,4 @@ def parse_user_message(user_text):
 #    return sentence
 
 if __name__ == '__main__':
-    app.run(port=8080)
+    app.run(port=9090)
